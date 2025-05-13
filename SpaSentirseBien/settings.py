@@ -29,8 +29,14 @@ ALLOWED_HOSTS = ["localhost","web-production-5825.up.railway.app"]
 
 import os 
 
+from dotenv import load_dotenv
 
+
+import dj_database_url
 # Application definition
+
+
+load_dotenv()
 
 
 
@@ -89,11 +95,9 @@ WSGI_APPLICATION = 'SpaSentirseBien.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, "db.sqlite3"),
-    }
+    'default': dj_database_url.config(default="postgresql://postgres:UmpdloONjpVfzIpYvyAvIoxeMXXkEnLm@postgres.railway.internal:5432/railway")
 }
 
 
