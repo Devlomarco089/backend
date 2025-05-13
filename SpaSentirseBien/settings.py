@@ -188,4 +188,4 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 STATIC_URL = '/static/'
 
-CSRF_TRUSTED_ORIGIN = ['https://*','https://web-production-5825.up.railway.app']
+CSRF_TRUSTED_ORIGINS = ['https://*','https://web-production-5825.up.railway.app']
