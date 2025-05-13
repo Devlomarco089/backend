@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-y#ej0bffv_9d5q53oye&z0mkz73qw7wran1eou%-@faj-_@0#8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["localhost","web-production-5825.up.railway.app"]
 
 import os 
 
@@ -142,7 +142,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Para desarrollo
-    "https://<tu-dominio>.railway.app",  # Dominio de producción
+    "web-production-5825.up.railway.app",  # Dominio de producción
 ]
 
 REST_FRAMEWORK = {
@@ -176,3 +176,5 @@ EMAIL_HOST_PASSWORD = 'password'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'media/servicios'),
 ]
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
