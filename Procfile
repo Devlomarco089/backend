@@ -1,1 +1,1 @@
-web: gunicorn SpaSentirseBien.wsgi:application 
+web: python manage.py collectsatic && gunicorn SpaSentirseBien.wsgi:application 
