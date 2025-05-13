@@ -183,3 +183,5 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 STATIC_URL = '/static/'
+
+CSRF_TRUSTED_ORIGIN = ['https://*','https://web-production-5825.up.railway.app']
