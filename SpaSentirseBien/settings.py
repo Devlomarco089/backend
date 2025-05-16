@@ -180,7 +180,7 @@ EMAIL_HOST_PASSWORD = 'password'
 
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'media/servicios'),
+    os.path.join(BASE_DIR, 'static'),
 ]
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
@@ -193,10 +193,6 @@ CSRF_TRUSTED_ORIGINS = ['https://*','https://web-production-5825.up.railway.app'
 
 
 
-
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'Servicios/static'),
-]
 
 MEDIA_URL = '/media/'  # URL base para acceder a los archivos de medios
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')  # Carpeta donde se almacenan los archivos de medios
