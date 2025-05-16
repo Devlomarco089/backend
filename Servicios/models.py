@@ -10,7 +10,7 @@ class Servicios(models.Model):
         ('corporal', 'Corporal'),
         ('grupal', 'Grupal'),
         ]
-    imagen = models.ImageField(upload_to='servicios/' , blank=True, null=True)
+    imagen = models.ImageField(upload_to='static/images/' , blank=True, null=True)
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField()
     precio = models.DecimalField(max_digits=10, decimal_places=2)
