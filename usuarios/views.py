@@ -1,17 +1,22 @@
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
+from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.authtoken.models import Token
 from django.core.mail import send_mail
 from django.contrib.auth.tokens import default_token_generator
+from django.contrib.auth import authenticate
 from django.utils.http import urlsafe_base64_decode
 from django.shortcuts import get_object_or_404
-from .serializer import UserSerializer
+from .serializer import UserSerializer, ProfessionalSelfSerializer
 from .utils import generate_email_verification_link
-from .models import CustomUser
+from .models import CustomUser, Professional
+from .permissions import IsProfessionalOwner
 
 
+#view de registros de usuarios
 class UsuarioRegisterView(APIView):
     permission_classes = [AllowAny] 
 
@@ -69,3 +74,25 @@ class VerifyEmailView(APIView):
             return Response({'message': 'Correo verificado con éxito. Ahora puedes iniciar sesión.'}, status=status.HTTP_200_OK)
         else:
             return Response({'message': 'El enlace de verificación no es válido o ha expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+#ViewSet edicion perfil por profesional
+class ProfessionalSelfUpdateViewSet(viewsets.ModelViewSet):
+    queryset = Professional.objects.all()
+    serializer_class = ProfessionalSelfSerializer
+    permission_classes = [IsAuthenticated, IsProfessionalOwner]
+
+    def get_queryset(self):
+        return Professional.objects.filter(user=self.request.user) #solo su perfil
+    
+
+
+
+class TestAuthView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "message": "Token válido, usuario autenticado",
+            "usuario": request.user.username
+        })

@@ -2,6 +2,7 @@ from .models import CustomUser, Professional
 from rest_framework import serializers
 
 
+#Serializers para crear usuarios con sus tipos
 class ProfessionalSerializer(serializers.ModelSerializer):
     class Meta:
         model = Professional
@@ -38,3 +39,18 @@ class UserSerializer(serializers.ModelSerializer):
             profesional.save()
 
         return user
+    
+
+#serializer para edicion de perfil por profesionales
+class ProfessionalSelfSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Professional
+        fields = ['profile_picture'] #solo estos campos
+
+class ProfessionalAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Professional
+        fields = '__all__'
+
+
+

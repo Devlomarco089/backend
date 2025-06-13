@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Turnos
+from .models import Turnos, OrdenTurno
 
 
 class TurnoSerializer(serializers.ModelSerializer):
@@ -11,3 +11,9 @@ class TurnoSerializer(serializers.ModelSerializer):
         model = Turnos
         fields = '__all__'
         
+class OrdenTurnoSerializer(serializers.ModelSerializer):
+    turnos = TurnoSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = OrdenTurno
+        fields = '__all__'

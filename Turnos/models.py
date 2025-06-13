@@ -15,9 +15,33 @@ class HorarioDisponible(models.Model):
 
 
 class Turnos(models.Model):
-    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    orden = models.ForeignKey("OrdenTurno", on_delete=models.CASCADE, related_name='turnos')
     horario = models.ForeignKey(HorarioDisponible, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.usuario.username} - {self.horario.servicio.nombre} - {self.horario.fecha} - {self.horario.hora}"
+        return f"{self.orden.usuario.username} - {self.horario.servicio.nombre} - {self.horario.fecha} - {self.horario.hora}"
 
+
+class OrdenTurno(models.Model):
+    METODOS_PAGO = (
+        ("web", "Web"),
+        ("efectivo", "Efectivo"),
+    )
+
+    TIPOS_TARJETA = (
+        ("debito", "Débito"),
+        ("credito", "Crédito"),
+    )
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    pagado = models.BooleanField(default=False)
+    descuento_aplicado = models.BooleanField(default=False)
+    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    metodo_pago = models.CharField(max_length=20, choices=METODOS_PAGO, null=True, blank=True)
+    tipo_tarjeta = models.CharField(max_length=10, choices=TIPOS_TARJETA, null=True, blank=True)
+    fecha_pago = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Orden de {self.usuario.username} - Total: {self.total}"
