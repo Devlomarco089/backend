@@ -5,7 +5,7 @@ from .serializer import TurnoSerializer, OrdenTurnoSerializer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from django.core.mail import send_mail
 from decimal import Decimal
 from collections import defaultdict
@@ -16,6 +16,8 @@ from django.http import HttpResponse
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+from calendar import monthrange
+from django.db.models import F, Sum
 
 class TurnoListCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -273,3 +275,118 @@ class TurnosPDFAPIView(APIView):
         response = HttpResponse(buffer, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="turnos_{tomorrow.strftime("%d_%m_%Y")}.pdf"'
         return response
+    
+
+
+class TurnosPorDiaPorServicioAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        fecha_str = request.query_params.get("fecha")
+        if not fecha_str:
+            return Response({"error": "Debe proveer la fecha en formato YYYY-MM-DD"}, status=400)
+        
+        try:
+            fecha = datetime.strptime(fecha_str, "%Y-%m-%d").date()
+        except ValueError:
+            return Response({"error": "Formato de fecha inválido, debe ser YYYY-MM-DD"}, status=400)
+
+        # Filtro turnos por fecha
+        turnos = Turnos.objects.filter(horario__fecha=fecha).select_related(
+            "orden__usuario", "profesional", "servicio", "horario"
+        ).order_by("servicio__nombre", "horario__hora")
+
+        # Se agrupa por servicio
+        turnos_por_servicio = defaultdict(list)
+        for turno in turnos:
+            servicio_nombre = turno.servicio.nombre if hasattr(turno.servicio, "nombre") else str(turno.servicio)
+            turno_info = {
+                "hora": turno.horario.hora.strftime("%H:%M"),
+                "paciente": f"{turno.orden.usuario.first_name} {turno.orden.usuario.last_name}",
+                "email_paciente": turno.orden.usuario.email,
+                "profesional": turno.profesional.get_full_name() or turno.profesional.username,
+            }
+            turnos_por_servicio[servicio_nombre].append(turno_info)
+
+        return Response({
+            fecha_str: turnos_por_servicio
+        })
+    
+
+
+class TotalesPagadosPorServicioAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        fecha_inicio = request.query_params.get('fecha_inicio')
+        fecha_fin = request.query_params.get('fecha_fin')
+
+        if not fecha_inicio or not fecha_fin:
+            # Si no se pasan fechas, se usa el mes actual completo
+            hoy = date.today()
+            primer_dia = date(hoy.year, hoy.month, 1)
+            ultimo_dia = date(hoy.year, hoy.month, monthrange(hoy.year, hoy.month)[1])
+            fecha_inicio_dt = primer_dia
+            fecha_fin_dt = ultimo_dia
+        else:
+            try:
+                fecha_inicio_dt = datetime.strptime(fecha_inicio, "%Y-%m-%d").date()
+                fecha_fin_dt = datetime.strptime(fecha_fin, "%Y-%m-%d").date()
+            except (TypeError, ValueError):
+                return Response(
+                    {"error": "Parámetros fecha_inicio y fecha_fin con formato YYYY-MM-DD son obligatorios."},
+                    status=400
+                )
+
+        turnos = Turnos.objects.filter(
+            horario__fecha__gte=fecha_inicio_dt,
+            horario__fecha__lte=fecha_fin_dt,
+            orden__pagado=True
+        ).values(
+            servicio_nombre=F('servicio__nombre')
+        ).annotate(
+            total_pagado=Sum('orden__total')
+        ).order_by('servicio_nombre')
+
+        return Response({
+            "fecha_inicio": fecha_inicio_dt,
+            "fecha_fin": fecha_fin_dt,
+            "totales": turnos
+        })
+    
+
+class TotalesPagadosPorProfesionalView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        fecha_inicio_str = request.query_params.get('fecha_inicio')
+        fecha_fin_str = request.query_params.get('fecha_fin')
+
+        hoy = datetime.now().date()
+        if not fecha_inicio_str or not fecha_fin_str:
+            # Primer día del mes actual
+            fecha_inicio = hoy.replace(day=1)
+            # Último día del mes actual
+            fecha_fin = (fecha_inicio + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        else:
+            fecha_inicio = datetime.strptime(fecha_inicio_str, "%Y-%m-%d").date()
+            fecha_fin = datetime.strptime(fecha_fin_str, "%Y-%m-%d").date()
+
+        # Consulta: sumar totales pagados por profesional en el rango de fechas
+        # join entre Turnos y OrdenTurno, filtro por orden pagada y fecha_pago dentro del rango 
+        queryset = (
+            Turnos.objects.filter(
+                orden__pagado=True,
+                orden__fecha_pago__date__gte=fecha_inicio,
+                orden__fecha_pago__date__lte=fecha_fin,
+            )
+            .values(profesional_id=F('profesional__id'), profesional_nombre=F('profesional__username'))
+            .annotate(total_pagado=Sum('orden__total'))
+            .order_by('profesional_nombre')
+        )
+
+        return Response({
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "totales_por_profesional": list(queryset)
+        })
