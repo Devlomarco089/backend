@@ -10,6 +10,12 @@ from django.core.mail import send_mail
 from decimal import Decimal
 from collections import defaultdict
 from .utils import enviar_comprobante_pago
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from io import BytesIO
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet
 
 class TurnoListCreateView(APIView):
     permission_classes = [IsAuthenticated]
@@ -104,7 +110,16 @@ class ReservarTurnosView(APIView):
             )
 
             for h in horarios_en_fecha:
-                Turnos.objects.create(orden=orden, horario=h)
+                profesional = h.profesional
+                if not profesional:
+                    return Response({"error": f"El servicio '{h.servicio}' no tiene un profesional asignado."}, status=400)
+                
+                Turnos.objects.create(
+                    orden=orden,
+                    horario=h,
+                    profesional=profesional,
+                    servicio=h.servicio
+                )
                 h.disponible = False
                 h.save()
 
@@ -191,4 +206,70 @@ class PagarOrdenView(APIView):
         else:
             return Response({"error": "Método de pago inválido. Use 'web' o 'efectivo'."}, status=400)
         
-        
+
+class TurnosTomorrowAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = request.user
+        tomorrow = datetime.now().date() + timedelta(days=1)
+
+        turnos = Turnos.objects.filter(
+            horario__fecha=tomorrow,
+            profesional=usuario
+        ).select_related("orden__usuario", "horario", "servicio").order_by("horario__hora")
+
+        serializer = TurnoSerializer(turnos, many=True)
+        return Response(serializer.data)
+
+
+class TurnosPDFAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        usuario = request.user
+        tomorrow = datetime.now().date() + timedelta(days=1)
+
+        turnos = Turnos.objects.filter(
+            horario__fecha=tomorrow,
+            profesional=usuario
+        ).select_related("orden__usuario", "horario", "servicio").order_by("horario__hora")
+
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        elements = []
+
+        styles = getSampleStyleSheet()
+        elements.append(Paragraph(f"Turnos para el día {tomorrow.strftime('%d/%m/%Y')}", styles["Title"]))
+        elements.append(Spacer(1, 12))
+
+        if not turnos:
+            elements.append(Paragraph("No hay turnos asignados.", styles["Normal"]))
+        else:
+            data = [["Hora", "Paciente", "Email", "Servicio"]]
+            for turno in turnos:
+                hora = turno.horario.hora.strftime("%H:%M")
+                nombre = f"{turno.orden.usuario.first_name} {turno.orden.usuario.last_name}"
+                email = turno.orden.usuario.email
+                servicio = turno.servicio.nombre if hasattr(turno.servicio, "nombre") else str(turno.servicio)
+                data.append([hora, nombre, email, servicio])
+
+            table = Table(data, colWidths=[60, 150, 180, 150])
+            table.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.black),
+                ("ALIGN", (0, 0), (-1, -1), "LEFT"),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 10),
+                ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ]))
+            elements.append(table)
+
+        doc.build(elements)
+
+        buffer.seek(0)
+        response = HttpResponse(buffer, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="turnos_{tomorrow.strftime("%d_%m_%Y")}.pdf"'
+        return response

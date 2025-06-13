@@ -18,6 +18,7 @@ class Servicios(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
     categoria = models.CharField(max_length=20, choices=CATEGORIA_CHOICES, default='masajes')
+    profesional = models.ManyToManyField('usuarios.Professional', null=True, blank=True, related_name='servicios')
 
     def __str__(self):
         return self.nombre

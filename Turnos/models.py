@@ -9,6 +9,7 @@ class HorarioDisponible(models.Model):
     fecha = models.DateField()
     hora = models.TimeField()
     disponible = models.BooleanField(default=True)  # Indica si el horario está disponible
+    profesional = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.servicio.nombre} - {self.fecha} - {self.hora} - {'Disponible' if self.disponible else 'Ocupado'}"
@@ -17,6 +18,8 @@ class HorarioDisponible(models.Model):
 class Turnos(models.Model):
     orden = models.ForeignKey("OrdenTurno", on_delete=models.CASCADE, related_name='turnos')
     horario = models.ForeignKey(HorarioDisponible, on_delete=models.CASCADE)
+    profesional = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="turnos_asignados")
+    servicio = models.ForeignKey(Servicios, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.orden.usuario.username} - {self.horario.servicio.nombre} - {self.horario.fecha} - {self.horario.hora}"
